@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createEvent, createTicketType } from "../api/eventApi";
+import { useToast } from "../context/ToastContext";
 import "./Organizer.css";
 
 export default function CreateEventPage() {
   const navigate = useNavigate();
+  const { showError, showSuccess, showWarning, extractErrorMessage } = useToast();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  const todayStr = new Date().toISOString().split("T")[0];
 
   const [eventData, setEventData] = useState({
     title: "",
@@ -41,7 +44,7 @@ export default function CreateEventPage() {
 
   const handleRemoveTier = (index) => {
     if (ticketTiers.length === 1) {
-      alert("At least one ticket tier is required for the event.");
+      showWarning("At least one ticket tier is required for the event.", "Ticket Tier Required");
       return;
     }
     setTicketTiers(ticketTiers.filter((_, i) => i !== index));
@@ -49,27 +52,49 @@ export default function CreateEventPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
+
+    // Date validation
+    if (!eventData.eventDate) {
+      showWarning("Please select an event date.", "Event Date Required");
+      return;
+    }
+    if (eventData.eventDate < todayStr) {
+      showError(
+        "Event date cannot be in the past. Please choose today or a future date.",
+        "Invalid Event Date"
+      );
+      return;
+    }
 
     // Validate ticket tiers
     for (let i = 0; i < ticketTiers.length; i++) {
       if (!ticketTiers[i].name.trim()) {
-        setError(`Please enter a name for Ticket Tier #${i + 1}`);
-        setLoading(false);
+        showWarning(`Please enter a name for Ticket Tier #${i + 1}`, "Missing Tier Name");
         return;
       }
       if (ticketTiers[i].price < 0) {
-        setError(`Price cannot be negative for Ticket Tier #${i + 1}`);
-        setLoading(false);
+        showWarning(`Price cannot be negative for Ticket Tier #${i + 1}`, "Invalid Price");
         return;
       }
       if (ticketTiers[i].totalQuantity <= 0) {
-        setError(`Quantity must be greater than 0 for Ticket Tier #${i + 1}`);
-        setLoading(false);
+        showWarning(`Quantity must be greater than 0 for Ticket Tier #${i + 1}`, "Invalid Quantity");
         return;
       }
     }
+
+    const sumTiers = ticketTiers.reduce(
+      (acc, t) => acc + (parseInt(t.totalQuantity) || 0),
+      0
+    );
+    if (sumTiers > parseInt(eventData.totalCapacity)) {
+      showWarning(
+        `Total tickets across tiers (${sumTiers}) cannot exceed event capacity (${eventData.totalCapacity}).`,
+        "Capacity Exceeded"
+      );
+      return;
+    }
+
+    setLoading(true);
 
     try {
       // 1. Create the event
@@ -87,12 +112,14 @@ export default function CreateEventPage() {
         )
       );
 
+      showSuccess("Event published successfully!", "Event Created");
       navigate("/organizer/dashboard");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to create event. Please check inputs."
+      const msg = extractErrorMessage(
+        err,
+        "Failed to create event. Please check inputs."
       );
+      showError(msg, "Failed to Create Event");
     } finally {
       setLoading(false);
     }
@@ -105,8 +132,6 @@ export default function CreateEventPage() {
       </h1>
 
       <div className="form-card">
-        {error && <div className="auth-error">{error}</div>}
-
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label className="form-label">Event Title</label>
@@ -208,6 +233,7 @@ export default function CreateEventPage() {
               <input
                 type="date"
                 required
+                min={todayStr}
                 className="form-input"
                 value={eventData.eventDate}
                 onChange={(e) =>

@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import "./Auth.css";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { showError, showSuccess, extractErrorMessage } = useToast();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -17,13 +18,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
       const response = await loginUser(formData);
       // Response contains { token, userId, name, email, role }
       login(response.data);
+      showSuccess(`Welcome back, ${response.data.name || "User"}!`, "Login Successful");
 
       // Redirect user according to role
       const role = response.data.role;
@@ -35,10 +36,11 @@ export default function LoginPage() {
         navigate("/");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Invalid email or password. Please try again.",
+      const msg = extractErrorMessage(
+        err,
+        "Invalid email or password. Please try again."
       );
+      showError(msg, "Login Failed");
     } finally {
       setLoading(false);
     }
@@ -51,8 +53,6 @@ export default function LoginPage() {
         <p className="auth-subtitle">
           Sign in to manage your events and tickets
         </p>
-
-        {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

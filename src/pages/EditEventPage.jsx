@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getEventById, updateEvent, getEventTickets, createTicketType } from "../api/eventApi";
+import { useToast } from "../context/ToastContext";
 import "./Organizer.css";
 
 export default function EditEventPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showError, showSuccess, showWarning, extractErrorMessage } = useToast();
 
+  const todayStr = new Date().toISOString().split("T")[0];
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [existingTickets, setExistingTickets] = useState([]);
 
   const [eventData, setEventData] = useState({
@@ -59,7 +61,7 @@ export default function EditEventPage() {
 
       setExistingTickets(tickRes.data || []);
     } catch (err) {
-      setError("Failed to load event details for editing.");
+      showError("Failed to load event details for editing.", "Load Failed");
     } finally {
       setLoading(false);
     }
@@ -67,8 +69,16 @@ export default function EditEventPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (eventData.eventDate && eventData.eventDate < todayStr) {
+      showError(
+        "Event date cannot be in the past. Please choose today or a future date.",
+        "Invalid Event Date"
+      );
+      return;
+    }
+
     setSubmitting(true);
-    setError("");
 
     try {
       await updateEvent(id, {
@@ -84,12 +94,14 @@ export default function EditEventPage() {
         totalCapacity: parseInt(eventData.totalCapacity),
       });
 
+      showSuccess("Event updated successfully!", "Event Updated");
       navigate("/organizer/dashboard");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Failed to update event. Please check inputs."
+      const msg = extractErrorMessage(
+        err,
+        "Failed to update event. Please check inputs."
       );
+      showError(msg, "Update Failed");
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +109,10 @@ export default function EditEventPage() {
 
   const handleAddNewTier = async (e) => {
     e.preventDefault();
-    if (!newTier.name.trim()) return;
+    if (!newTier.name.trim()) {
+      showWarning("Please enter a name for the new ticket tier.", "Missing Tier Name");
+      return;
+    }
 
     setAddingTier(true);
     try {
@@ -111,8 +126,10 @@ export default function EditEventPage() {
       const tickRes = await getEventTickets(id);
       setExistingTickets(tickRes.data || []);
       setNewTier({ name: "", price: 0, totalQuantity: 10 });
+      showSuccess("New ticket tier added successfully!", "Tier Added");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to add ticket tier");
+      const msg = extractErrorMessage(err, "Failed to add ticket tier");
+      showError(msg, "Tier Creation Failed");
     } finally {
       setAddingTier(false);
     }
@@ -138,7 +155,6 @@ export default function EditEventPage() {
       </div>
 
       <div className="form-card">
-        {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -237,6 +253,7 @@ export default function EditEventPage() {
               <input
                 type="date"
                 required
+                min={todayStr}
                 className="form-input"
                 value={eventData.eventDate}
                 onChange={(e) =>

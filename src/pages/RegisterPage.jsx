@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authApi";
+import { useToast } from "../context/ToastContext";
 import "./Auth.css";
 
 export default function RegisterPage() {
@@ -12,8 +13,8 @@ export default function RegisterPage() {
     role: "USER", // 'USER', 'ORGANIZER', or 'ADMIN'
     active: true,
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { showError, showSuccess, extractErrorMessage } = useToast();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -22,18 +23,19 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
       await registerUser(formData);
+      showSuccess("Account created successfully! Please log in.", "Registration Successful");
       // After registration, redirect to login
       navigate("/login");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Registration failed. Please check your details.",
+      const msg = extractErrorMessage(
+        err,
+        "Registration failed. Please check your details."
       );
+      showError(msg, "Registration Failed");
     } finally {
       setLoading(false);
     }
@@ -46,8 +48,6 @@ export default function RegisterPage() {
         <p className="auth-subtitle">
           Join Bridge2Event to discover or host amazing events
         </p>
-
-        {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

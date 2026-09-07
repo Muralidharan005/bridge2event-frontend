@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { getMyBookings, cancelBooking } from "../api/bookingApi";
 import { getTicketByBookingId } from "../api/ticketApi";
 import {
@@ -21,6 +22,7 @@ import "./MyBookings.css";
 
 export default function MyBookingsPage() {
   const { user } = useAuth();
+  const { showError, showSuccess, extractErrorMessage } = useToast();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,9 +55,11 @@ export default function MyBookingsPage() {
       return;
     try {
       await cancelBooking(bookingId);
+      showSuccess("Booking has been successfully cancelled.", "Booking Cancelled");
       loadBookings();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to cancel booking");
+      const msg = extractErrorMessage(err, "Failed to cancel booking");
+      showError(msg, "Cancellation Failed");
     }
   };
 
@@ -71,7 +75,8 @@ export default function MyBookingsPage() {
       const url = URL.createObjectURL(qrRes.data);
       setQrBlobUrl(url);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to load ticket QR code");
+      const msg = extractErrorMessage(err, "Failed to load ticket QR code");
+      showError(msg, "QR Code Error");
     } finally {
       setModalLoading(false);
     }

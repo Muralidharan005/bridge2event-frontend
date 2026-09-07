@@ -6,6 +6,7 @@ import { createBooking } from "../api/bookingApi";
 import { makePayment } from "../api/paymentApi";
 import { generateTicket } from "../api/ticketApi";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   Smartphone,
   CreditCard,
@@ -76,6 +77,7 @@ export default function EventDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const { showToast, showError, showWarning, showSuccess, extractErrorMessage } = useToast();
 
   const [event, setEvent] = useState(null);
   const [ticketTypes, setTicketTypes] = useState([]);
@@ -86,36 +88,6 @@ export default function EventDetailsPage() {
   const [processingStep, setProcessingStep] = useState(1);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [message, setMessage] = useState({ text: "", type: "" });
-
-  // Floating Side Toast Notification State
-  const [toast, setToast] = useState(null);
-  const toastTimerRef = useRef(null);
-
-  const showToast = (message, type = "warning", title = "Booking Alert") => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToast({ message, type, title, id: Date.now() });
-    toastTimerRef.current = setTimeout(() => {
-      setToast(null);
-    }, 4000);
-  };
-
-  const dismissToast = () => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToast(null);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-    };
-  }, []);
 
   // Payment Selection States
   const [paymentMethod, setPaymentMethod] = useState("UPI");
@@ -172,10 +144,10 @@ export default function EventDetailsPage() {
         setTicketTypes(sampleTiers);
         setSelectedTicket(sampleTiers[0]);
       } else {
-        setMessage({
-          text: err.response?.data?.message || "Failed to load event details.",
-          type: "error",
-        });
+        showError(
+          err.response?.data?.message || "Failed to load event details.",
+          "Load Error"
+        );
       }
     } finally {
       setLoading(false);
@@ -204,15 +176,15 @@ export default function EventDetailsPage() {
     }
 
     if (user?.role === "ORGANIZER" || user?.role === "ADMIN") {
-      setMessage({
-        text: "Organizers and Admins cannot book tickets. Please use an Attendee (USER) account.",
-        type: "error",
-      });
+      showError(
+        "Organizers and Admins cannot book tickets. Please use an Attendee (USER) account.",
+        "Action Prohibited"
+      );
       return;
     }
 
     if (!selectedTicket) {
-      setMessage({ text: "Please select a ticket tier", type: "error" });
+      showWarning("Please select a ticket tier", "Ticket Tier Required");
       return;
     }
 
@@ -241,16 +213,15 @@ export default function EventDetailsPage() {
         : selectedTicket.totalQuantity;
 
     if (qtyNum > tierAvailable) {
-      setMessage({
-        text: `Only ${tierAvailable} ticket(s) remaining for ${selectedTicket.name}.`,
-        type: "error",
-      });
+      showWarning(
+        `Only ${tierAvailable} ticket(s) remaining for ${selectedTicket.name}.`,
+        "Limited Tickets Available"
+      );
       return;
     }
 
     setBookingLoading(true);
     setProcessingStep(1);
-    setMessage({ text: "", type: "" });
 
     // Smooth progressive step indicators across ~2 seconds
     const timerStep2 = setTimeout(() => setProcessingStep(2), 700);
@@ -395,12 +366,11 @@ export default function EventDetailsPage() {
         return;
       }
 
-      setMessage({
-        text:
-          err.response?.data?.message ||
-          "Failed to complete booking. Please check ticket availability and try again.",
-        type: "error",
-      });
+      const msg = extractErrorMessage(
+        err,
+        "Failed to complete booking. Please check ticket availability and try again."
+      );
+      showError(msg, "Booking Failed");
     } finally {
       clearTimeout(timerStep2);
       clearTimeout(timerStep3);
@@ -437,49 +407,6 @@ export default function EventDetailsPage() {
 
   return (
     <div className="event-details-wrapper">
-      {/* Floating Side Toast Notification */}
-      {toast && (
-        <div
-          className={`side-toast-notification toast-${toast.type}`}
-          role="alert"
-        >
-          <div className="toast-icon-wrapper">
-            {toast.type === "warning" && (
-              <AlertTriangle size={20} className="toast-symbol" />
-            )}
-            {toast.type === "error" && (
-              <AlertCircle size={20} className="toast-symbol" />
-            )}
-            {toast.type === "info" && (
-              <CheckCircle2 size={20} className="toast-symbol" />
-            )}
-          </div>
-          <div className="toast-body-wrapper">
-            <h4 className="toast-title">{toast.title}</h4>
-            <p className="toast-text">{toast.message}</p>
-          </div>
-          <button
-            type="button"
-            className="toast-close-btn"
-            onClick={dismissToast}
-            aria-label="Close notification"
-          >
-            <X size={16} />
-          </button>
-          <div className="toast-progress-bar">
-            <div className="toast-progress-track" />
-          </div>
-        </div>
-      )}
-
-      {message.text && (
-        <div
-          className={`alert-message ${message.type === "success" ? "alert-success" : "alert-error"}`}
-        >
-          {message.text}
-        </div>
-      )}
-
       <div className="event-details-layout">
         {/* Left Column: Event Information */}
         <div className="event-main-content">

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { getOrganizerBookings, deleteOrganizerBooking } from "../api/organizerApi";
 import { getMyEvents } from "../api/eventApi";
+import { useToast } from "../context/ToastContext";
 import CustomDropdown from "../components/CustomDropdown";
 import {
   Calendar,
@@ -30,7 +31,7 @@ export default function OrganizerBookingsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [message, setMessage] = useState({ text: "", type: "" });
+  const { showError, showSuccess, extractErrorMessage } = useToast();
 
   useEffect(() => {
     loadData();
@@ -44,12 +45,11 @@ export default function OrganizerBookingsPage() {
     }
     const cat = searchParams.get("category");
     if (cat) {
-      setCategoryFilter(cat);
+      setCategoryFilter(cat.toUpperCase());
     }
   }, [searchParams]);
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const [bookingsRes, eventsRes] = await Promise.all([
         getOrganizerBookings(),
@@ -59,10 +59,7 @@ export default function OrganizerBookingsPage() {
       setEvents(eventsRes.data || []);
     } catch (err) {
       console.error("Failed to load organizer bookings", err);
-      setMessage({
-        text: "Failed to load attendee bookings.",
-        type: "error",
-      });
+      showError("Failed to load attendee bookings.", "Load Error");
     } finally {
       setLoading(false);
     }
@@ -75,22 +72,19 @@ export default function OrganizerBookingsPage() {
     if (!confirmDelete) return;
 
     setActionLoading(true);
-    setMessage({ text: "", type: "" });
 
     try {
       await deleteOrganizerBooking(booking.id);
-      setMessage({
-        text: `Successfully deleted ticket booking #${booking.bookingNumber}.`,
-        type: "success",
-      });
+      showSuccess(
+        `Successfully deleted ticket booking #${booking.bookingNumber}.`,
+        "Booking Deleted"
+      );
       // Refresh list
       const res = await getOrganizerBookings();
       setBookings(res.data || []);
     } catch (err) {
-      setMessage({
-        text: err.response?.data?.message || "Failed to delete booking.",
-        type: "error",
-      });
+      const msg = extractErrorMessage(err, "Failed to delete booking.");
+      showError(msg, "Delete Failed");
     } finally {
       setActionLoading(false);
     }
@@ -363,17 +357,6 @@ export default function OrganizerBookingsPage() {
           <span>Back to Dashboard</span>
         </Link>
       </div>
-
-      {message.text && (
-        <div
-          className={`alert-message ${
-            message.type === "success" ? "alert-success" : "alert-error"
-          }`}
-          style={{ marginBottom: "20px" }}
-        >
-          {message.text}
-        </div>
-      )}
 
       {/* Dynamic Revenue & Metrics Highlight Card */}
       <div className="organizer-revenue-card">

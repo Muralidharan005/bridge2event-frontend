@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { getAllUsers, activateUser, deactivateUser } from "../api/adminApi";
+import { useToast } from "../context/ToastContext";
 import "./Admin.css";
 import "./Organizer.css";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showError, showSuccess, extractErrorMessage } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -17,6 +19,7 @@ export default function AdminUsersPage() {
       setUsers(response.data);
     } catch (err) {
       console.error("Failed to load users", err);
+      showError("Failed to load user records.", "Load Error");
     } finally {
       setLoading(false);
     }
@@ -26,12 +29,15 @@ export default function AdminUsersPage() {
     try {
       if (user.active) {
         await deactivateUser(user.id);
+        showSuccess(`User "${user.name}" has been deactivated.`, "User Deactivated");
       } else {
         await activateUser(user.id);
+        showSuccess(`User "${user.name}" has been activated.`, "User Activated");
       }
       fetchUsers(); // Refresh the list
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update user status");
+      const msg = extractErrorMessage(err, "Failed to update user status");
+      showError(msg, "Status Update Failed");
     }
   };
 

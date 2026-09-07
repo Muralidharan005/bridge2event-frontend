@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { checkInTicket } from "../api/organizerApi";
+import { useToast } from "../context/ToastContext";
 import "./Organizer.css";
 
 export default function CheckInPage() {
+  const { showError, showSuccess, extractErrorMessage } = useToast();
   const [scanMode, setScanMode] = useState("CAMERA"); // "CAMERA" | "MANUAL"
   const [qrCodeInput, setQrCodeInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
 
   const html5QrCodeRef = useRef(null);
 
   // Initialize and start camera scanner
   const startCamera = async () => {
-    setError("");
     setResult(null);
 
     try {
@@ -46,8 +46,9 @@ export default function CheckInPage() {
     } catch (err) {
       console.error("Camera start error:", err);
       setIsScanning(false);
-      setError(
-        "Could not access camera. Please allow camera permissions or use Manual Input mode."
+      showError(
+        "Could not access camera. Please allow camera permissions or use Manual Input mode.",
+        "Camera Permission"
       );
     }
   };
@@ -70,17 +71,18 @@ export default function CheckInPage() {
   const handleScannedQr = async (scannedPayload) => {
     await stopCamera();
     setLoading(true);
-    setError("");
     setResult(null);
 
     try {
       const response = await checkInTicket(scannedPayload.trim());
       setResult(response.data);
+      showSuccess(response.data?.message || "Check-in successful!", "Ticket Validated");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Invalid, expired, or already used ticket QR code."
+      const msg = extractErrorMessage(
+        err,
+        "Invalid, expired, or already used ticket QR code."
       );
+      showError(msg, "Check-In Failed");
     } finally {
       setLoading(false);
     }
@@ -92,18 +94,19 @@ export default function CheckInPage() {
     if (!qrCodeInput.trim()) return;
 
     setLoading(true);
-    setError("");
     setResult(null);
 
     try {
       const response = await checkInTicket(qrCodeInput.trim());
       setResult(response.data);
       setQrCodeInput("");
+      showSuccess(response.data?.message || "Check-in successful!", "Ticket Validated");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Invalid, expired, or already used ticket QR code."
+      const msg = extractErrorMessage(
+        err,
+        "Invalid, expired, or already used ticket QR code."
       );
+      showError(msg, "Check-In Failed");
     } finally {
       setLoading(false);
     }
@@ -124,7 +127,6 @@ export default function CheckInPage() {
 
   const handleScanNext = () => {
     setResult(null);
-    setError("");
     setQrCodeInput("");
     if (scanMode === "CAMERA") {
       startCamera();
@@ -157,7 +159,6 @@ export default function CheckInPage() {
             className={`tab-btn ${scanMode === "CAMERA" ? "active" : ""}`}
             onClick={() => {
               setScanMode("CAMERA");
-              setError("");
             }}
           >
             📸 Live Camera Scanner
@@ -167,14 +168,11 @@ export default function CheckInPage() {
             className={`tab-btn ${scanMode === "MANUAL" ? "active" : ""}`}
             onClick={() => {
               setScanMode("MANUAL");
-              setError("");
             }}
           >
             ⌨️ Manual Entry
           </button>
         </div>
-
-        {error && <div className="auth-error" style={{ marginBottom: "16px" }}>{error}</div>}
 
         {/* CAMERA SCANNER VIEW */}
         {scanMode === "CAMERA" && !result && (
@@ -239,17 +237,6 @@ export default function CheckInPage() {
               📷 Scan Next Attendee
             </button>
           </div>
-        )}
-
-        {/* Action button if error occurred to retry */}
-        {error && (
-          <button
-            onClick={handleScanNext}
-            className="btn-cancel-booking"
-            style={{ marginTop: "16px", width: "100%" }}
-          >
-            🔄 Try Again
-          </button>
         )}
       </div>
     </div>

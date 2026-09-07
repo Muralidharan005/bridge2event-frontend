@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./context/ToastContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
@@ -31,7 +32,8 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
+      <ToastProvider>
+        <Router>
         <ScrollToTop />
         <div
           style={{
@@ -92,6 +94,7 @@ export default function App() {
           <Footer />
         </div>
       </Router>
+      </ToastProvider>
     </AuthProvider>
   );
 }

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getOrganizerDashboard } from "../api/organizerApi";
 import { getMyEvents, deleteEvent } from "../api/eventApi";
+import { useToast } from "../context/ToastContext";
 import "./Organizer.css";
 
 export default function OrganizerDashboard() {
   const [stats, setStats] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showError, showSuccess, extractErrorMessage } = useToast();
 
   useEffect(() => {
     loadDashboard();
@@ -23,6 +25,7 @@ export default function OrganizerDashboard() {
       setEvents(eventsRes.data);
     } catch (err) {
       console.error("Failed to load organizer dashboard", err);
+      showError("Failed to load organizer dashboard", "Load Error");
     } finally {
       setLoading(false);
     }
@@ -32,9 +35,11 @@ export default function OrganizerDashboard() {
     if (!window.confirm("Are you sure you want to delete this event?")) return;
     try {
       await deleteEvent(id);
+      showSuccess("Event deleted successfully", "Event Deleted");
       loadDashboard();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete event");
+      const msg = extractErrorMessage(err, "Failed to delete event");
+      showError(msg, "Delete Failed");
     }
   };
 

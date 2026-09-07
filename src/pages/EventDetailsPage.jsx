@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getEventById, getEventTickets } from "../api/eventApi";
+import {
+  getEventById,
+  getEventTickets,
+  getCachedEvent,
+  getCachedEventTickets,
+} from "../api/eventApi";
 import { sampleEvents } from "../data/sampleEvents";
 import { createBooking } from "../api/bookingApi";
 import { makePayment } from "../api/paymentApi";
@@ -79,11 +84,16 @@ export default function EventDetailsPage() {
   const { isAuthenticated, user } = useAuth();
   const { showToast, showError, showWarning, showSuccess, extractErrorMessage } = useToast();
 
-  const [event, setEvent] = useState(null);
-  const [ticketTypes, setTicketTypes] = useState([]);
-  const [selectedTicket, setSelectedTicket] = useState(null);
+  const cachedEvent = getCachedEvent(id);
+  const cachedTickets = getCachedEventTickets(id);
+
+  const [event, setEvent] = useState(cachedEvent || null);
+  const [ticketTypes, setTicketTypes] = useState(cachedTickets || []);
+  const [selectedTicket, setSelectedTicket] = useState(
+    cachedTickets && cachedTickets.length > 0 ? cachedTickets[0] : null
+  );
   const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedEvent);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [processingStep, setProcessingStep] = useState(1);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
@@ -114,6 +124,11 @@ export default function EventDetailsPage() {
   }, [id]);
 
   const loadEventData = async () => {
+    // Only set loading if no cached data was available
+    if (!getCachedEvent(id)) {
+      setLoading(true);
+    }
+
     try {
       // 1. Fetch event information
       const eventRes = await getEventById(id);
@@ -124,9 +139,7 @@ export default function EventDetailsPage() {
         const ticketsRes = await getEventTickets(id);
         const tickets = ticketsRes.data || [];
         setTicketTypes(tickets);
-        if (tickets.length > 0) {
-          setSelectedTicket(tickets[0]);
-        }
+        setSelectedTicket((prev) => prev || (tickets.length > 0 ? tickets[0] : null));
       } catch (tickErr) {
         console.warn("Could not load tickets for event", tickErr);
         setTicketTypes([]);

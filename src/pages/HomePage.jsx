@@ -5,6 +5,7 @@ import {
   getPaginatedEvents,
   getEventCategories,
   getEventCities,
+  getCachedPaginatedEvents,
 } from "../api/eventApi";
 import { sampleEvents } from "../data/sampleEvents";
 import {
@@ -26,10 +27,20 @@ import {
 import CustomDropdown from "../components/CustomDropdown";
 import "./Home.css";
 
+const DEFAULT_HOME_PARAMS = {
+  page: 0,
+  size: 6,
+  sortBy: "eventDate",
+  sortDir: "asc",
+};
+
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
-  const [events, setEvents] = useState([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
+  const cachedInitial = getCachedPaginatedEvents(DEFAULT_HOME_PARAMS);
+  const [events, setEvents] = useState(
+    cachedInitial?.content || (Array.isArray(cachedInitial) ? cachedInitial : [])
+  );
+  const [loadingEvents, setLoadingEvents] = useState(!cachedInitial);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,8 +55,8 @@ export default function HomePage() {
 
   // Backend Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(cachedInitial?.totalPages || 1);
+  const [totalElements, setTotalElements] = useState(cachedInitial?.totalElements || 0);
   const itemsPerPage = 6; // 6 events per page requested from Spring Boot
 
   // Debounce search query so backend query runs after typing stops
@@ -87,38 +98,42 @@ export default function HomePage() {
   // Server-side paginated fetch from backend
   const fetchEvents = useCallback(
     async (pageToLoad = currentPage) => {
-      setLoadingEvents(true);
+      let apiSortBy = "eventDate";
+      let apiSortDir = "asc";
+      if (sortBy === "date-desc") {
+        apiSortBy = "eventDate";
+        apiSortDir = "desc";
+      } else if (sortBy === "title-asc") {
+        apiSortBy = "title";
+        apiSortDir = "asc";
+      } else if (sortBy === "seats-desc") {
+        apiSortBy = "availableSeats";
+        apiSortDir = "desc";
+      }
+
+      const params = {
+        page: Math.max(0, pageToLoad - 1), // Spring Boot Pageable is 0-indexed
+        size: itemsPerPage,
+        sortBy: apiSortBy,
+        sortDir: apiSortDir,
+      };
+
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+      if (selectedCategory !== "ALL") {
+        params.category = selectedCategory;
+      }
+      if (selectedCity !== "ALL") {
+        params.city = selectedCity;
+      }
+
+      const cached = getCachedPaginatedEvents(params);
+      if (!cached) {
+        setLoadingEvents(true);
+      }
+
       try {
-        let apiSortBy = "eventDate";
-        let apiSortDir = "asc";
-        if (sortBy === "date-desc") {
-          apiSortBy = "eventDate";
-          apiSortDir = "desc";
-        } else if (sortBy === "title-asc") {
-          apiSortBy = "title";
-          apiSortDir = "asc";
-        } else if (sortBy === "seats-desc") {
-          apiSortBy = "availableSeats";
-          apiSortDir = "desc";
-        }
-
-        const params = {
-          page: Math.max(0, pageToLoad - 1), // Spring Boot Pageable is 0-indexed
-          size: itemsPerPage,
-          sortBy: apiSortBy,
-          sortDir: apiSortDir,
-        };
-
-        if (debouncedSearch.trim()) {
-          params.search = debouncedSearch.trim();
-        }
-        if (selectedCategory !== "ALL") {
-          params.category = selectedCategory;
-        }
-        if (selectedCity !== "ALL") {
-          params.city = selectedCity;
-        }
-
         const res = await getPaginatedEvents(params);
 
         if (res.data && res.data.content) {

@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getPaginatedEvents, getEventCategories } from "../api/eventApi";
+import {
+  getPaginatedEvents,
+  getEventCategories,
+  getCachedPaginatedEvents,
+} from "../api/eventApi";
 import {
   Search,
   MapPin,
@@ -13,9 +17,19 @@ import {
 } from "lucide-react";
 import "./MyBookings.css";
 
+const DEFAULT_EXPLORE_PARAMS = {
+  page: 0,
+  size: 6,
+  sortBy: "eventDate",
+  sortDir: "asc",
+};
+
 export default function ExploreEventsPage() {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInitial = getCachedPaginatedEvents(DEFAULT_EXPLORE_PARAMS);
+  const [events, setEvents] = useState(
+    cachedInitial?.content || (Array.isArray(cachedInitial) ? cachedInitial : [])
+  );
+  const [loading, setLoading] = useState(!cachedInitial);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
@@ -23,8 +37,8 @@ export default function ExploreEventsPage() {
 
   // Backend Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(cachedInitial?.totalPages || 1);
+  const [totalElements, setTotalElements] = useState(cachedInitial?.totalElements || 0);
   const itemsPerPage = 6;
 
   // Debounce search input
@@ -54,21 +68,26 @@ export default function ExploreEventsPage() {
   // Fetch page from backend
   const loadEvents = useCallback(
     async (pageToLoad = currentPage) => {
-      setLoading(true);
-      try {
-        const params = {
-          page: Math.max(0, pageToLoad - 1),
-          size: itemsPerPage,
-          sortBy: "eventDate",
-          sortDir: "asc",
-        };
-        if (debouncedSearch.trim()) {
-          params.search = debouncedSearch.trim();
-        }
-        if (selectedCategory !== "ALL") {
-          params.category = selectedCategory;
-        }
+      const params = {
+        page: Math.max(0, pageToLoad - 1),
+        size: itemsPerPage,
+        sortBy: "eventDate",
+        sortDir: "asc",
+      };
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+      if (selectedCategory !== "ALL") {
+        params.category = selectedCategory;
+      }
 
+      // If we don't have cached data for these params, show loading indicator
+      const cached = getCachedPaginatedEvents(params);
+      if (!cached) {
+        setLoading(true);
+      }
+
+      try {
         const res = await getPaginatedEvents(params);
         if (res.data && res.data.content) {
           setEvents(res.data.content);

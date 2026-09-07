@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAdminDashboard } from "../api/adminApi";
+import { getAdminDashboard, getCachedAdminDashboard } from "../api/adminApi";
 import "./Admin.css";
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cachedStats = getCachedAdminDashboard();
+  const [stats, setStats] = useState(cachedStats || null);
+  const [loading, setLoading] = useState(!cachedStats);
 
   useEffect(() => {
     fetchStats();
   }, []);
 
   const fetchStats = async () => {
+    if (!getCachedAdminDashboard()) {
+      setLoading(true);
+    }
+
     try {
       const response = await getAdminDashboard();
       setStats(response.data);

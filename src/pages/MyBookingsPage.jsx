@@ -2,7 +2,11 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { getMyBookings, cancelBooking } from "../api/bookingApi";
+import {
+  getMyBookings,
+  cancelBooking,
+  getCachedMyBookings,
+} from "../api/bookingApi";
 import { getTicketByBookingId } from "../api/ticketApi";
 import {
   Ticket,
@@ -23,8 +27,9 @@ import "./MyBookings.css";
 export default function MyBookingsPage() {
   const { user } = useAuth();
   const { showError, showSuccess, extractErrorMessage } = useToast();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedBookings = getCachedMyBookings();
+  const [bookings, setBookings] = useState(cachedBookings || []);
+  const [loading, setLoading] = useState(!cachedBookings);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
@@ -38,7 +43,10 @@ export default function MyBookingsPage() {
   }, []);
 
   const loadBookings = async () => {
-    setLoading(true);
+    if (!getCachedMyBookings()) {
+      setLoading(true);
+    }
+
     try {
       const res = await getMyBookings();
       setBookings(res.data || []);

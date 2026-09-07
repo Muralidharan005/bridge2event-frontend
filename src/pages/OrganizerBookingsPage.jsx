@@ -1,7 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { getOrganizerBookings, deleteOrganizerBooking } from "../api/organizerApi";
-import { getMyEvents } from "../api/eventApi";
+import {
+  getOrganizerBookings,
+  deleteOrganizerBooking,
+  getCachedOrganizerBookings,
+} from "../api/organizerApi";
+import { getMyEvents, getCachedMyEvents } from "../api/eventApi";
 import { useToast } from "../context/ToastContext";
 import CustomDropdown from "../components/CustomDropdown";
 import {
@@ -27,9 +31,12 @@ export default function OrganizerBookingsPage() {
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [bookings, setBookings] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedBookings = getCachedOrganizerBookings();
+  const cachedEvents = getCachedMyEvents();
+
+  const [bookings, setBookings] = useState(cachedBookings || []);
+  const [events, setEvents] = useState(cachedEvents || []);
+  const [loading, setLoading] = useState(!(cachedBookings || cachedEvents));
   const [actionLoading, setActionLoading] = useState(false);
   const { showError, showSuccess, extractErrorMessage } = useToast();
 
@@ -50,6 +57,10 @@ export default function OrganizerBookingsPage() {
   }, [searchParams]);
 
   const loadData = async () => {
+    if (!getCachedOrganizerBookings() && !getCachedMyEvents()) {
+      setLoading(true);
+    }
+
     try {
       const [bookingsRes, eventsRes] = await Promise.all([
         getOrganizerBookings(),

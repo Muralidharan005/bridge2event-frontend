@@ -1,4 +1,4 @@
-﻿/**
+/**
  * In-Memory API Cache for Bridge2Event Frontend
  * Provides instantaneous page transitions, request deduplication, and TTL expiration.
  */
@@ -72,6 +72,20 @@ class ApiCache {
    */
   invalidateEvents() {
     this.invalidate("events");
+  }
+
+  /**
+   * Clear all organizer-related caches.
+   */
+  invalidateOrganizer() {
+    this.invalidate("organizer");
+  }
+
+  /**
+   * Clear all admin-related caches.
+   */
+  invalidateAdmin() {
+    this.invalidate("admin");
   }
 
   /**

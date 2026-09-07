@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { getAllUsers, activateUser, deactivateUser } from "../api/adminApi";
+import {
+  getAllUsers,
+  activateUser,
+  deactivateUser,
+  getCachedAllUsers,
+} from "../api/adminApi";
 import { useToast } from "../context/ToastContext";
 import "./Admin.css";
 import "./Organizer.css";
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedUsers = getCachedAllUsers();
+  const [users, setUsers] = useState(cachedUsers || []);
+  const [loading, setLoading] = useState(!cachedUsers);
   const { showError, showSuccess, extractErrorMessage } = useToast();
 
   useEffect(() => {
@@ -14,9 +20,13 @@ export default function AdminUsersPage() {
   }, []);
 
   const fetchUsers = async () => {
+    if (!getCachedAllUsers()) {
+      setLoading(true);
+    }
+
     try {
       const response = await getAllUsers();
-      setUsers(response.data);
+      setUsers(response.data || []);
     } catch (err) {
       console.error("Failed to load users", err);
       showError("Failed to load user records.", "Load Error");

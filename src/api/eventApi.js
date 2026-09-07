@@ -83,19 +83,26 @@ export const getCachedEventTickets = (eventId) => {
   return apiCache.get(`events:tickets:${eventId}`);
 };
 
-// GET /events/my-events - Events created by the logged-in organizer (cached 1 minute)
+// GET /events/my-events - Events created by the logged-in organizer (cached 2 minutes)
 export const getMyEvents = (options = {}) => {
   const key = "events:my-events";
   return apiCache.fetch(key, () => api.get("/events/my-events"), {
-    ttl: 60 * 1000,
+    ttl: 2 * 60 * 1000,
     ...options,
   });
+};
+
+// Synchronous helper to read cached organizer events
+export const getCachedMyEvents = () => {
+  return apiCache.get("events:my-events");
 };
 
 // POST /events - Create event (ORGANIZER only) -> invalidates cache
 export const createEvent = async (eventData) => {
   const res = await api.post("/events", eventData);
   apiCache.invalidateEvents();
+  apiCache.invalidateOrganizer();
+  apiCache.invalidateAdmin();
   return res;
 };
 
@@ -103,6 +110,8 @@ export const createEvent = async (eventData) => {
 export const updateEvent = async (id, eventData) => {
   const res = await api.put(`/events/${id}`, eventData);
   apiCache.invalidateEvents();
+  apiCache.invalidateOrganizer();
+  apiCache.invalidateAdmin();
   return res;
 };
 
@@ -110,6 +119,8 @@ export const updateEvent = async (id, eventData) => {
 export const deleteEvent = async (id) => {
   const res = await api.delete(`/events/${id}`);
   apiCache.invalidateEvents();
+  apiCache.invalidateOrganizer();
+  apiCache.invalidateAdmin();
   return res;
 };
 
@@ -118,6 +129,7 @@ export const createTicketType = async (eventId, ticketData) => {
   const res = await api.post(`/events/${eventId}/tickets`, ticketData);
   apiCache.invalidate(`events:tickets:${eventId}`);
   apiCache.invalidate(`events:id:${eventId}`);
+  apiCache.invalidateOrganizer();
   return res;
 };
 

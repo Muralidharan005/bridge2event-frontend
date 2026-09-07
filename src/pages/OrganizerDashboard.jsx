@@ -1,14 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getOrganizerDashboard } from "../api/organizerApi";
-import { getMyEvents, deleteEvent } from "../api/eventApi";
+import {
+  getOrganizerDashboard,
+  getCachedOrganizerDashboard,
+} from "../api/organizerApi";
+import {
+  getMyEvents,
+  deleteEvent,
+  getCachedMyEvents,
+} from "../api/eventApi";
 import { useToast } from "../context/ToastContext";
 import "./Organizer.css";
 
 export default function OrganizerDashboard() {
-  const [stats, setStats] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedStats = getCachedOrganizerDashboard();
+  const cachedEvents = getCachedMyEvents();
+
+  const [stats, setStats] = useState(cachedStats || null);
+  const [events, setEvents] = useState(cachedEvents || []);
+  const [loading, setLoading] = useState(!(cachedStats || cachedEvents));
   const { showError, showSuccess, extractErrorMessage } = useToast();
 
   useEffect(() => {
@@ -16,13 +26,17 @@ export default function OrganizerDashboard() {
   }, []);
 
   const loadDashboard = async () => {
+    if (!getCachedOrganizerDashboard() && !getCachedMyEvents()) {
+      setLoading(true);
+    }
+
     try {
       const [statsRes, eventsRes] = await Promise.all([
         getOrganizerDashboard(),
         getMyEvents(),
       ]);
       setStats(statsRes.data);
-      setEvents(eventsRes.data);
+      setEvents(eventsRes.data || []);
     } catch (err) {
       console.error("Failed to load organizer dashboard", err);
       showError("Failed to load organizer dashboard", "Load Error");

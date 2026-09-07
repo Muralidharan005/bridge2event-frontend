@@ -110,12 +110,15 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="footer-badges">
-            <span className="footer-feature-pill">
-              <Zap size={14} /> Instant QR Passes
+          <div className="footer-trust-highlights">
+            <span className="footer-trust-item">
+              <Zap size={14} className="trust-icon" />
+              <span>Instant QR Passes</span>
             </span>
-            <span className="footer-feature-pill">
-              <ShieldCheck size={14} /> Verified Organizers
+            <span className="trust-dot">•</span>
+            <span className="footer-trust-item">
+              <ShieldCheck size={14} className="trust-icon" />
+              <span>Verified Organizers</span>
             </span>
           </div>
         </div>

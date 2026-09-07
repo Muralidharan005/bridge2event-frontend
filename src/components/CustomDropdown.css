@@ -8,6 +8,10 @@
   user-select: none;
 }
 
+.modern-dropdown-root.is-open {
+  z-index: 100;
+}
+
 /* Trigger Button */
 .modern-dropdown-trigger {
   display: inline-flex;
@@ -92,7 +96,7 @@
   padding: 6px;
   box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.14),
               0 4px 10px -2px rgba(15, 23, 42, 0.06);
-  z-index: 100;
+  z-index: 1000;
   animation: dropdownFadeSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 

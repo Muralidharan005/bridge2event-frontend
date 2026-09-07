@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../api/authApi";
 import { useToast } from "../context/ToastContext";
+import { Eye, EyeOff } from "lucide-react";
 import "./Auth.css";
 
 export default function RegisterPage() {
@@ -13,8 +14,11 @@ export default function RegisterPage() {
     role: "USER", // 'USER', 'ORGANIZER', or 'ADMIN'
     active: true,
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { showError, showSuccess, extractErrorMessage } = useToast();
+  const { showError, showSuccess, showWarning, extractErrorMessage } = useToast();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -23,6 +27,20 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.password.length < 6) {
+      showWarning("Password must be at least 6 characters.", "Password Too Short");
+      return;
+    }
+
+    if (formData.password !== confirmPassword) {
+      showError(
+        "Passwords do not match. Please re-enter your password to confirm.",
+        "Password Mismatch"
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -91,15 +109,55 @@ export default function RegisterPage() {
 
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input
-              type="password"
-              name="password"
-              required
-              placeholder="Create a strong password"
-              className="form-input"
-              value={formData.password}
-              onChange={handleChange}
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                required
+                placeholder="Create a strong password (min 6 chars)"
+                className="form-input"
+                value={formData.password}
+                onChange={handleChange}
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Confirm Password</label>
+            <div className="password-input-wrapper">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                required
+                placeholder="Re-enter your password"
+                className="form-input"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={
+                  showConfirmPassword ? "Hide confirm password" : "Show confirm password"
+                }
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {confirmPassword && formData.password !== confirmPassword && (
+              <span style={{ fontSize: "0.78rem", color: "#ef4444", marginTop: "2px" }}>
+                Passwords do not match
+              </span>
+            )}
           </div>
 
           <div className="form-group">

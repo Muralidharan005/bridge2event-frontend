@@ -9,7 +9,8 @@ export default function RegisterPage() {
     email: "",
     phone: "",
     password: "",
-    role: "USER", // 'USER' or 'ORGANIZER'
+    role: "USER", // 'USER', 'ORGANIZER', or 'ADMIN'
+    active: true,
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
